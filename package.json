@@ -3,32 +3,42 @@
     "@sap/cds": "^10.0.5"
   },
   "devDependencies": {
-    "@cap-js/sqlite": "^3.0.2"
+    "@cap-js/sqlite": "^3.0.2",
+    "cds-plugin-ui5": "^0.17.0"
   },
   "cds": {
-  "requires": {
-    "db": {
-      "[development]": {
-        "kind": "sqlite",
-        "credentials": {
-          "url": ":memory:"
+    "requires": {
+      "db": {
+        "[development]": {
+          "kind": "sqlite",
+          "credentials": {
+            "url": ":memory:"
+          }
         }
-      }
-    },
-    "auth": {
-      "kind": "mocked",
-      "users": {
-        "adminuser": {
-          "password": "abcd1234",
-          "roles": [
-            "admin"
-          ]
-        },
-        "catuser": {
-          "password": "abcd1234"
+      },
+      "auth": {
+        "kind": "mocked",
+        "users": {
+          "adminuser": {
+            "password": "abcd1234",
+            "roles": [
+              "admin"
+            ]
+          },
+          "catuser": {
+            "password": "abcd1234"
+          }
         }
       }
     }
-  }
-}
+  },
+  "workspaces": [
+    "app/*"
+  ],
+  "scripts": {
+    "watch-tutorial_project": "cds watch --open com.myproject.books.tutorialproject/index.html?sap-ui-xx-viewCache=false --livereload false"
+  },
+  "sapux": [
+    "app/tutorial_project"
+  ]
 }
