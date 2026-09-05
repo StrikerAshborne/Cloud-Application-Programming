@@ -1,5 +1,9 @@
 {
   "dependencies": {
-    "@sap/cds": "^10.0.5"
+    "@sap/cds": "^10.0.5",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@cap-js/sqlite": "^3.0.2"
   }
 }
