@@ -44,6 +44,15 @@
   },
   "sap.ui5": {
     "flexEnabled": true,
+    "extends": {
+      "extensions": {
+        "sap.ui.controllerExtensions": {
+          "sap.fe.templates.ListReport.ListReportController": {
+            "controllerName": "ns.excelreader.ext.controller.ListReportExtension"
+          }
+        }
+      }
+    },
     "dependencies": {
       "minUI5Version": "1.152.0",
       "libs": {
@@ -114,6 +123,18 @@
                 "@com.sap.vocabularies.UI.v1.LineItem": {
                   "tableSettings": {
                     "type": "ResponsiveTable"
+                  }
+                }
+              },
+              "content": {
+                "header": {
+                  "actions": {
+                    "uploadexcel": {
+                      "press": "onUploadExcel",
+                      "visible": true,
+                      "enabled": true,
+                      "text": "Upload Excel File"
+                    }
                   }
                 }
               }

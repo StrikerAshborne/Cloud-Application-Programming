@@ -15,7 +15,9 @@ class AdminService extends cds.ApplicationService {
 
         const { Purchases } = this.entities;
 
-        this.on('uploadExcel', async req => {
+        this.on('uploadExcel', async (req) => {
+
+            const { file, filename } = req.data;
 
             if (!filename) {
                 return req.reject(400, 'Filename is required.');
