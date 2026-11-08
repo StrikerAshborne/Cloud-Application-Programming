@@ -1,279 +1,321 @@
-const EXPECTED_HEADERS = [
-                'NAME',
-                'REFERENCEPURCHASEORDER',
-                'POSTINGDATE',
-                'REFERENCEPURCHASEORDERITEM',
-                'ACCOUNTASSIGNMENTCATEGORY',
-                'UNIT',
-                'PERFORMANCEDATE',
-                'PERFORMANCEENDDATE',
-                'NETPRICE'
-            ];
+
+const ALLOWED_DATA_TYPES = [
+    'String',
+    'Integer',
+    'Decimal',
+    'Boolean',
+    'Date'
+];
 
 
-const MONTHS = {
-    january: '01',
-    february: '02',
-    march: '03',
-    april: '04',
-    may: '05',
-    june: '06',
-    july: '07',
-    august: '08',
-    september: '09',
-    october: '10',
-    november: '11',
-    december: '12'
-};
-
-
-function validateHeaders(actualHeaders) {
+/**
+ * Validates the column configuration.
+ */
+function validateConfiguration(configuration) {
 
     const errors = [];
 
-    const maxColumns = Math.max(
-        EXPECTED_HEADERS.length,
-        actualHeaders.length
-    );
+    if (!Array.isArray(configuration) || configuration.length === 0) {
+        return [{
+            message: 'No column configuration was found.'
+        }];
+    }
 
-    for (let index = 0; index < maxColumns; index++) {
+    const seenHeaders = new Set();
 
-        const expected = EXPECTED_HEADERS[index];
-        const actual = actualHeaders[index] ?? null;
+    configuration.forEach((column, index) => {
 
-        if (expected !== actual) {
+        if (
+            typeof column.headerName !== 'string' ||
+            !column.headerName.trim()
+        ) {
             errors.push({
                 column: index + 1,
-                expected,
-                actual
+                message: 'Header name cannot be empty.'
+            });
+
+            return;
+        }
+
+        const normalizedHeader = column.headerName.trim().toLowerCase();
+
+        if (seenHeaders.has(normalizedHeader)) {
+            errors.push({
+                column: column.headerName,
+                message: 'Duplicate configured header.'
             });
         }
-    }
+
+        seenHeaders.add(normalizedHeader);
+
+        if (!ALLOWED_DATA_TYPES.includes(column.dataType)) {
+            errors.push({
+                column: column.headerName,
+                message: `Unsupported data type: ${column.dataType}.`
+            });
+        }
+
+    });
 
     return errors;
 }
 
-function validateRow(row, rowNumber) {
+
+/**
+ * Validates Excel headers against configuration.
+ *
+ * Missing configured headers are allowed.
+ * Unknown Excel headers are not allowed.
+ */
+function validateHeaders(headers, configuration) {
 
     const errors = [];
 
-    const name = row[0];
-    const purchaseOrder = row[1];
-    const postingDate = row[2];
-    const item = row[3];
-    const category = row[4];
-    const unit = row[5];
-    const performanceMonth = row[6];
-    const performanceEndDate = row[7];
-    const netPrice = row[8];
-
-    if (typeof name !== 'string' ||
-        !/^[A-Za-zÁÉÍÓÖŐÚÜŰáéíóöőúüű _-]+$/.test(name.trim())) {
-        errors.push({
-            row: rowNumber,
-            column: 'NAME',
-            message: 'NAME contains invalid characters.'
-        });
+    if (!Array.isArray(headers) || headers.length === 0) {
+        return [{
+            message: 'No headers were provided.'
+        }];
     }
 
-    if (!/^\d{10}$/.test(String(purchaseOrder ?? '').trim())) {
-        errors.push({
-            row: rowNumber,
-            column: 'REFERENCEPURCHASEORDER',
-            message: 'REFERENCEPURCHASEORDER must contain exactly 10 digits.'
-        });
-    }
+    const normalizedHeaders = headers.map(header =>
+        typeof header === 'string'
+            ? header.trim().toLowerCase()
+            : ''
+    );
 
-    if (!/^\d{2}\/\d{2}\/\d{4}$/.test(
-            String(postingDate ?? '').trim())) {
-        errors.push({
-            row: rowNumber,
-            column: 'POSTINGDATE',
-            message: 'POSTINGDATE must be in MM/DD/YYYY format.'
-        });
-    }
+    // Check empty headers
+    headers.forEach((header, index) => {
 
-    if (!Number.isInteger(Number(item))) {
-        errors.push({
-            row: rowNumber,
-            column: 'REFERENCEPURCHASEORDERITEM',
-            message: 'REFERENCEPURCHASEORDERITEM must be an integer.'
-        });
-    }
+        if (
+            typeof header !== 'string' ||
+            !header.trim()
+        ) {
+            errors.push({
+                column: index + 1,
+                message: 'Header cannot be empty.'
+            });
+        }
 
-    if (!['A', 'B', 'C'].includes(
-        String(category ?? '').trim())) {
-        errors.push({
-            row: rowNumber,
-            column: 'ACCOUNTASSIGNMENTCATEGORY',
-            message: 'ACCOUNTASSIGNMENTCATEGORY must be A, B or C.'
-        });
-    }
+    });
 
-    if (!['ÓRA', 'NAP'].includes(
-        String(unit ?? '').trim())) {
-        errors.push({
-            row: rowNumber,
-            column: 'UNIT',
-            message: 'UNIT must be ÓRA or NAP.'
-        });
-    }
+    // Check duplicate Excel headers
+    const seenHeaders = new Set();
 
-    if (!/^\d{4}\s+[A-Za-z]+$/.test(
-        String(performanceMonth ?? '').trim())) {
-        errors.push({
-            row: rowNumber,
-            column: 'PERFORMANCEDATE',
-            message: 'PERFORMANCEDATE must contain a year and month.'
-        });
-    }
+    normalizedHeaders.forEach((header, index) => {
 
-    if (!/^\d{4}[./-]\w+[ .-]+\d{1,2}$/.test(
-        String(performanceEndDate ?? '').trim())) {
-        errors.push({
-            row: rowNumber,
-            column: 'PERFORMANCEENDDATE',
-            message: 'PERFORMANCEENDDATE is invalid.'
-        });
-    }
+        if (!header) {
+            return;
+        }
 
-    if (!Number.isInteger(Number(netPrice))) {
-        errors.push({
-            row: rowNumber,
-            column: 'NETPRICE',
-            message: 'NETPRICE must be an integer.'
-        });
-    }
+        if (seenHeaders.has(header)) {
+            errors.push({
+                column: index + 1,
+                header: headers[index],
+                message: 'Duplicate Excel header.'
+            });
+        }
+
+        seenHeaders.add(header);
+
+    });
+
+    // Check unknown Excel headers
+    const configuredHeaders = new Set(
+        configuration.map(column =>
+            column.headerName.trim().toLowerCase()
+        )
+    );
+
+    headers.forEach((header, index) => {
+
+        if (
+            typeof header === 'string' &&
+            header.trim() &&
+            !configuredHeaders.has(header.trim().toLowerCase())
+        ) {
+            errors.push({
+                column: index + 1,
+                header,
+                message: 'Unknown column header.'
+            });
+        }
+
+    });
 
     return errors;
 }
 
-function normalizePostingDate(value) {
 
-    if (value instanceof Date && !Number.isNaN(value.getTime())) {
-        return value;
+/**
+ * Validates a value against a configured data type.
+ */
+function validateDataType(value, dataType) {
+
+    switch (dataType) {
+
+        case 'String':
+            return typeof value === 'string';
+
+        case 'Integer':
+            return (
+                typeof value === 'number' &&
+                Number.isInteger(value)
+            );
+
+        case 'Decimal':
+            return (
+                typeof value === 'number' &&
+                Number.isFinite(value)
+            );
+
+        case 'Boolean':
+            return typeof value === 'boolean';
+
+        case 'Date': {
+
+            if (typeof value !== 'string') {
+                return false;
+            }
+
+            if (!/^\d{4}-\d{2}-\d{2}(?:T.*)?$/.test(value)) {
+                return false;
+            }
+
+            const [year, month, day] = value
+                .slice(0, 10)
+                .split('-')
+                .map(Number);
+
+            const date = new Date(Date.UTC(year, month - 1, day));
+
+            return (
+                date.getUTCFullYear() === year &&
+                date.getUTCMonth() === month - 1 &&
+                date.getUTCDate() === day &&
+                !isNaN(Date.parse(value))
+            );
+        }
+
+        default:
+            return false;
     }
+}
 
-    if (typeof value !== 'string') {
-        return null;
-    }
 
-    const match = value.trim().match(
-        /^(\d{2})\/(\d{2})\/(\d{4})$/
-    );
+/**
+ * Validates a single Excel row.
+ */
+function validateRow(row, rowNumber, configuration, headers) {
 
-    if (!match) {
-        return null;
-    }
-
-    const [, month, day, year] = match;
-
-    const date = new Date(
-        Number(year),
-        Number(month) - 1,
-        Number(day)
-    );
+    const errors = [];
 
     if (
-        date.getFullYear() !== Number(year) ||
-        date.getMonth() !== Number(month) - 1 ||
-        date.getDate() !== Number(day)
+        typeof row !== 'object' ||
+        row === null ||
+        Array.isArray(row)
     ) {
-        return null;
+        return [{
+            row: rowNumber,
+            message: 'Invalid row format.'
+        }];
     }
 
-    return date;
-}
+    // Check whether all uploaded headers exist in the row
+    headers.forEach(header => {
 
+        if (!Object.prototype.hasOwnProperty.call(row, header)) {
 
-function normalizePerformanceMonth(value) {
+            errors.push({
+                row: rowNumber,
+                column: header,
+                message: 'Missing column value.'
+            });
 
-    if (typeof value !== 'string') {
-        return null;
-    }
+        }
 
-    const match = value
-        .trim()
-        .toLowerCase()
-        .match(/^(\d{4})\s+([a-z]+)$/);
+    });
 
-    if (!match) {
-        return null;
-    }
+    // Validate configured data types
+    configuration.forEach(column => {
 
-    const [, year, monthName] = match;
+        const normalizedColumnName =
+            column.headerName.trim().toLowerCase();
 
-    const month = MONTHS[monthName];
-
-    if (!month) {
-        return null;
-    }
-
-    return `${year}-${month}`;
-}
-
-function normalizePerformanceEndDate(value) {
-
-    if (value instanceof Date && !Number.isNaN(value.getTime())) {
-        return value;
-    }
-
-    if (typeof value !== 'string') {
-        return null;
-    }
-
-    const match = value
-        .trim()
-        .toLowerCase()
-        .match(
-            /^(\d{4})[.\s-]+([a-z]+)[.\s-]+(\d{1,2})$/
+        const matchingKey = Object.keys(row).find(key =>
+            key.trim().toLowerCase() === normalizedColumnName
         );
 
-    if (!match) {
-        return null;
-    }
+        // Missing configured columns are allowed
+        if (matchingKey === undefined) {
+            return;
+        }
 
-    const [, year, monthName, day] = match;
+        const value = row[matchingKey];
 
-    const month = MONTHS[monthName];
+        // Empty values are allowed for now
+        if (
+            value === null ||
+            value === undefined ||
+            value === ''
+        ) {
+            return;
+        }
 
-    if (!month) {
-        return null;
-    }
+        if (!validateDataType(value, column.dataType)) {
 
-    const date = new Date(
-        Number(year),
-        Number(month) - 1,
-        Number(day)
-    );
+            errors.push({
+                row: rowNumber,
+                column: column.headerName,
+                value,
+                message: `Invalid data type. Expected ${column.dataType}.`
+            });
 
-    if (Number.isNaN(date.getTime())) {
-        return null;
-    }
+        }
 
-    return date;
+    });
+
+    return errors;
 }
 
-function validatePerformanceDateRelation(performanceDate,performanceEndDate) {
 
-    if (!performanceDate || !performanceEndDate) {
-        return false;
-    }
 
-    const year = performanceEndDate.getFullYear();
-    const month = String(
-        performanceEndDate.getMonth() + 1
-    ).padStart(2, '0');
+/**
+ * Normalizes Excel rows according to configuration.
+ *
+ * Missing configured columns are added with null values.
+ * Header names are replaced with their configured names.
+ */
+function normalizeRows(rows, configuration) {
 
-    return `${year}-${month}` === performanceDate;
+    return rows.map(row => {
+
+        const normalizedRow = {};
+
+        configuration.forEach(column => {
+
+            const normalizedColumnName =
+                column.headerName.trim().toLowerCase();
+
+            const matchingKey = Object.keys(row).find(key =>
+                key.trim().toLowerCase() === normalizedColumnName
+            );
+
+            normalizedRow[column.headerName] =
+                matchingKey !== undefined
+                    ? row[matchingKey]
+                    : null;
+
+        });
+
+        return normalizedRow;
+    });
 }
+
 
 module.exports = {
-    EXPECTED_HEADERS,
+    validateConfiguration,
     validateHeaders,
     validateRow,
-    normalizePostingDate,
-    normalizePerformanceMonth,
-    normalizePerformanceEndDate,
-    validatePerformanceDateRelation
+    validateDataType,
+    normalizeRows
 };

@@ -1,12 +1,17 @@
-sap.ui.define(
-    ["sap/fe/core/AppComponent"],
-    function (Component) {
-        "use strict";
+sap.ui.define([
+    "sap/ui/core/UIComponent"
+], function (UIComponent) {
+    "use strict";
 
-        return Component.extend("ns.excelreader.Component", {
-            metadata: {
-                manifest: "json"
-            }
-        });
-    }
-);
+    return UIComponent.extend("ns.excelreader.Component", {
+
+        metadata: {
+            manifest: "json"
+        },
+
+        init: function () {
+            UIComponent.prototype.init.apply(this, arguments);
+        }
+
+    });
+});

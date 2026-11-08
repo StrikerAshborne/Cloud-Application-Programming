@@ -1,61 +1,96 @@
 const cds = require('@sap/cds');
-const XLSX = require('xlsx');
+
+const { SELECT, INSERT } = cds.ql;
+
 const {
+    validateConfiguration,
     validateHeaders,
     validateRow,
-    normalizePostingDate,
-    normalizePerformanceMonth,
-    normalizePerformanceEndDate,
-    validatePerformanceDateRelation
+    normalizeRows
 } = require('./validation');
 
 class AdminService extends cds.ApplicationService {
 
     async init() {
 
-        const { Purchases } = this.entities;
+        const {
+            Imports,
+            ColumnConfigurations
+        } = this.entities;
 
         this.on('uploadExcel', async (req) => {
 
-            const { file, filename } = req.data;
+            const { data } = req.data;
 
-            if (!filename) {
+            // 1. Input validation
+            if (!data) {
+                return req.reject(400, 'No Excel data was provided.');
+            }
+
+            let oExcelData;
+
+            try {
+                oExcelData = JSON.parse(data);
+            } catch (error) {
+                return req.reject(400, 'Invalid JSON format.');
+            }
+
+            const {
+                filename,
+                headers,
+                data: rows
+            } = oExcelData;
+
+            // 2. Basic structure validation
+            if (
+                typeof filename !== 'string' ||
+                !filename.trim()
+            ) {
                 return req.reject(400, 'Filename is required.');
             }
 
-            if (!filename.toLowerCase().endsWith('.xlsx')) {
-                return req.reject(400, 'Only .xlsx files are supported.');
+            if (!Array.isArray(headers) || headers.length === 0) {
+                return req.reject(400, 'No headers were provided.');
             }
 
-            if (!file) {
-                return req.reject(400, 'No file was provided.');
+            if (!Array.isArray(rows) || rows.length === 0) {
+                return req.reject(400, 'The Excel file contains no data.');
             }
 
-            const workbook = XLSX.read(Buffer.from(file), {
-                type: 'buffer',
-                cellDates: true
-            });
+            // 3. Load column configuration
+            const configuration = await SELECT
+                .from(ColumnConfigurations)
+                .orderBy('position');
 
-            if (!workbook.SheetNames.length) {
-                return req.reject(400, 'The Excel file contains no worksheets.');
+            if (!configuration.length) {
+                return req.reject(
+                    400,
+                    'No Excel column configuration was found.'
+                );
             }
 
-            const worksheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[worksheetName];
+            // 4. Validate configuration
+            const configurationErrors =
+                validateConfiguration(configuration);
 
-            const rows = XLSX.utils.sheet_to_json(worksheet, {
-                header: 1,
-                defval: null,
-                raw: true
-            });
+            if (configurationErrors.length > 0) {
 
-            if (!rows.length) {
-                return req.reject(400, 'The Excel worksheet is empty.');
+                console.log(
+                    'Configuration errors:',
+                    configurationErrors
+                );
+
+                return req.reject(
+                    400,
+                    'Invalid Excel column configuration.'
+                );
             }
 
-            const Headers = rows[0];
-
-            const headerErrors = validateHeaders(Headers);
+            // 5. Validate Excel headers
+            const headerErrors = validateHeaders(
+                headers,
+                configuration
+            );
 
             if (headerErrors.length > 0) {
 
@@ -63,80 +98,68 @@ class AdminService extends cds.ApplicationService {
 
                 return req.reject(
                     400,
-                    'The Excel headers are invalid.'
+                    `Excel header validation failed. ${headerErrors.length} error(s) found.`
                 );
             }
 
-            const dataRows = rows.slice(1);
-
+            // 6. Validate rows and data types
             const validationErrors = [];
-            const records = [];
 
-            dataRows.forEach((row, index) => {
+            rows.forEach((row, index) => {
 
                 const rowNumber = index + 2;
 
                 const rowErrors = validateRow(
                     row,
-                    rowNumber
+                    rowNumber,
+                    configuration,
+                    headers
                 );
 
                 validationErrors.push(...rowErrors);
 
-                const postingDate =
-                    normalizePostingDate(row[2]);
-
-                const performanceDate =
-                    normalizePerformanceMonth(row[6]);
-
-                const performanceEndDate =
-                    normalizePerformanceEndDate(row[7]);
-
-                if (
-                    performanceDate &&
-                    performanceEndDate &&
-                    !validatePerformanceDateRelation(
-                        performanceDate,
-                        performanceEndDate
-                    )
-                ) {
-                    validationErrors.push({
-                        row: rowNumber,
-                        column: 'PERFORMANCEENDDATE',
-                        message:'PERFORMANCEENDDATE must be in the same month as PERFORMANCEDATE.'
-                    });
-                }
-
-                records.push({
-                    ID: cds.utils.uuid(),
-                    name: String(row[0] ?? '').trim(),
-                    referencePurchaseOrder:String(row[1] ?? '').trim(),
-                    postingDate,
-                    referencePurchaseOrderItem:Number(row[3]),
-                    accountAssignmentCategory:String(row[4] ?? '').trim(),
-                    unit:String(row[5] ?? '').trim(),
-                    performanceDate,
-                    performanceEndDate,
-                    netPrice:Number(row[8])
-                });
             });
 
             if (validationErrors.length > 0) {
 
-                console.log('Validation errors:', validationErrors);
+                console.log(
+                    'Validation errors:',
+                    validationErrors
+                );
 
-                return req.reject(400,`Excel validation failed. ${validationErrors.length} error(s) found.`);
+                return req.reject(
+                    400,
+                    `Excel validation failed. ${validationErrors.length} error(s) found.`
+                );
             }
 
-            await DELETE.from(Purchases);
+            // 7. Normalize rows according to configuration
+            const normalizedRows = normalizeRows(
+                rows,
+                configuration
+            );
 
-            await INSERT.into(Purchases).entries(records);
+            const normalizedHeaders = configuration.map(
+                column => column.headerName
+            );
 
-            return `Successfully imported ${records.length} record(s).`;
+            // 8. Save import
+            const oImport = {
+                ID: cds.utils.uuid(),
+                filename,
+                headers: JSON.stringify(normalizedHeaders),
+                data: JSON.stringify(normalizedRows),
+                totalRows: normalizedRows.length,
+                createdAt: new Date()
+            };
+
+            await INSERT.into(Imports).entries(oImport);
+
+            return `Successfully imported ${normalizedRows.length} record(s).`;
         });
 
         return super.init();
     }
-};
+}
 
-module.exports = AdminService
+module.exports = AdminService;

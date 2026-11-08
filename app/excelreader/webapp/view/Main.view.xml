@@ -1,0 +1,47 @@
+<mvc:View
+    controllerName="ns.excelreader.controller.Main"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns="sap.m">
+
+    <App>
+        <Page
+            title="Excel Reader"
+            showHeader="true">
+
+            <content>
+                <VBox
+                    class="sapUiMediumMargin"
+                    width="100%">
+
+                    <Title
+                        text="Excel Import"
+                        level="H2"/>
+
+                    <Text
+                        text="Upload and manage your Excel data."
+                        class="sapUiSmallMarginBottom"/>
+
+                    <Button
+                        text="Upload Excel File"
+                        type="Emphasized"
+                        icon="sap-icon://upload"
+                        press=".onUploadExcel"/>
+
+                    <Title
+                        text="Imported Data"
+                        level="H3"
+                        class="sapUiMediumMarginTop"/>
+
+                    <Table
+                        id="importedDataTable"
+                        growing="true"
+                        growingScrollToLoad="true">
+                    </Table>
+
+                </VBox>
+            </content>
+
+        </Page>
+    </App>
+
+</mvc:View>
