@@ -1,7 +1,8 @@
 <mvc:View
     controllerName="ns.excelreader.controller.Main"
     xmlns:mvc="sap.ui.core.mvc"
-    xmlns="sap.m">
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core">
 
     <App>
         <Page
@@ -27,16 +28,73 @@
                         icon="sap-icon://upload"
                         press=".onUploadExcel"/>
 
+                    <HBox
+                        alignItems="Center"
+                        wrap="Wrap"
+                        class="sapUiSmallMarginTop sapUiSmallMarginBottom">
+
+                        <Select
+                            id="importSelect"
+                            width="24rem"
+                            forceSelection="false"
+                            items="{
+                                path: '/Imports',
+                                parameters: {
+                                    $orderby: 'createdAt desc'
+                                }
+                            }">
+
+                            <core:Item
+                                key="{ID}"
+                                text="{= ${filename} + ' (' + ${totalRows} + ' rows)' }"/>
+
+                        </Select>
+
+                        <Button
+                            text="Load Data"
+                            type="Emphasized"
+                            icon="sap-icon://download"
+                            press=".onLoadData"
+                            class="sapUiSmallMarginBegin"/>
+
+                    </HBox>
+
                     <Title
                         text="Imported Data"
                         level="H3"
                         class="sapUiMediumMarginTop"/>
 
-                    <Table
-                        id="importedDataTable"
-                        growing="true"
-                        growingScrollToLoad="true">
-                    </Table>
+
+                    <VBox
+                        width="100%"
+                        class="sapUiMediumMarginTop"
+                        justifyContent="Center">
+
+                        <Table
+                            id="importedDataTable"
+                            growing="true"
+                            growingScrollToLoad="true"
+                            inset="false"
+                            width="80%"
+                            noDataText="Select an Excel import and press Load Data.">
+
+                            <headerToolbar>
+                                <Toolbar>
+
+                                    <Title
+                                        text="{table>/filename}"
+                                        level="H4"/>
+
+                                    <ToolbarSpacer/>
+
+                                    <Text
+                                        text="{= ${table>/totalRows} + ' rows' }"/>
+
+                                </Toolbar>
+                            </headerToolbar>
+
+                        </Table>
+                    </VBox>
 
                 </VBox>
             </content>

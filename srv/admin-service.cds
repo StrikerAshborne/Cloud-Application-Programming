@@ -9,4 +9,8 @@ service Adminservice @(path: '/admin'){
     action uploadExcel(
         data: LargeString,
     );
+
+    action loadImportData(
+        importID: UUID
+    ) returns LargeString;
 }

@@ -158,6 +158,68 @@ class AdminService extends cds.ApplicationService {
             return `Successfully imported ${normalizedRows.length} record(s).`;
         });
 
+        this.on('loadImportData', async (req) => {
+
+            const { importID } = req.data;
+
+            // 1. Check import ID
+            if (!importID) {
+                return req.reject(400, 'Import ID is required.');
+            }
+
+            // 2. Find selected import in database
+            const oImport = await SELECT.one
+                .from(Imports)
+                .where({ ID: importID });
+
+            if (!oImport) {
+                return req.reject(404, 'The selected import was not found.');
+            }
+
+            // 3. Parse stored JSON data
+            let aHeaders;
+            let aRows;
+
+            try {
+                aHeaders = JSON.parse(oImport.headers);
+                aRows = JSON.parse(oImport.data);
+            } catch (error) {
+                console.error('Import data parsing error:', error);
+
+                return req.reject(
+                    500,
+                    'The stored Excel data could not be parsed.'
+                );
+            }
+
+            // 4. Check stored data structure
+            if (!Array.isArray(aHeaders) || !Array.isArray(aRows)) {
+                return req.reject(
+                    500,
+                    'The stored Excel data has an invalid structure.'
+                );
+            }
+
+            // 5. Transform rows into arrays following header order
+            const aTableRows = aRows.map(oRow =>
+                aHeaders.map(sHeader =>
+                    oRow[sHeader] ?? null
+                )
+            );
+
+            // 6. Prepare table response
+            const oTableData = {
+                filename: oImport.filename,
+                headers: aHeaders,
+                rows: aTableRows,
+                totalRows: oImport.totalRows
+            };
+
+            // 7. Return JSON string to frontend
+            return JSON.stringify(oTableData);
+
+        });
+
         return super.init();
     }
 }
