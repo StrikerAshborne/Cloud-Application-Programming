@@ -1,0 +1,244 @@
+<mvc:View
+    controllerName="ns.excelreader.controller.TableConfigurations"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core">
+
+    <Page title="Table Configuration Management">
+
+        <headerContent>
+
+            <Button
+                text="Back to Main Page"
+                icon="sap-icon://nav-back"
+                press=".onBackToMain"/>
+
+        </headerContent>
+
+        <content>
+
+            <VBox
+                class="sapUiMediumMargin"
+                width="100%"
+                gap="1rem">
+
+
+                <Title
+                    text="Manage Table Configurations"
+                    level="H2"/>
+
+
+                <!-- Configuration selection -->
+                <HBox
+                    alignItems="Center"
+                    wrap="Wrap">
+
+                    <Select
+                        id="tableConfigurationSelect"
+                        width="20rem"
+                        forceSelection="false"
+                        change=".onSelectConfiguration"
+                        items="{
+                            path: '/TableConfigurations',
+                            parameters: {
+                                $orderby: 'name'
+                            }
+                        }">
+
+                        <core:Item
+                            key="{ID}"
+                            text="{name}"/>
+
+                    </Select>
+
+                </HBox>
+
+
+                <!-- Configuration name -->
+                <VBox width="100%">
+
+                    <Label
+                        text="Configuration Name"
+                        labelFor="configurationName"/>
+
+                    <Input
+                        id="configurationName"
+                        value="{config>/name}"
+                        placeholder="Enter configuration name"
+                        width="20rem"/>
+
+                </VBox>
+
+                <HBox>
+
+                    <Title
+                        text="Column Configurations"
+                        level="H3"/>
+
+                    <Button
+                        text="New Configuration"
+                        icon="sap-icon://add"
+                        press=".onNewConfiguration"
+                        class="sapUiSmallMarginBegin"/>
+                </HBox>
+                
+                <!-- Scrollable column configuration area -->
+                <ScrollContainer
+                    width="100%"
+                    height="22rem"
+                    vertical="true"
+                    horizontal="false"
+                    class="sapUiSmallMarginTop sapUiSmallMarginBottom">
+
+
+                    <VBox
+                        width="100%"
+                        class="sapUiSmallMarginBottom">
+
+
+                        <!-- Dynamic column configurations -->
+                        <VBox
+                            id="columnContainer"
+                            width="100%"
+                            items="{config>/columns}">
+
+                            <items>
+
+                                <Panel
+                                    class="sapUiSmallMarginBottom"
+                                    expandable="false">
+
+                                    <content>
+
+                                        <HBox
+                                            alignItems="Center"
+                                            wrap="Wrap"
+                                            class="sapUiSmallMargin">
+
+
+                                            <!-- Header name -->
+                                            <VBox
+                                                class="sapUiSmallMarginEnd">
+
+                                                <Label text="Header Name"/>
+
+                                                <Input
+                                                    value="{config>headerName}"
+                                                    placeholder="Column name"
+                                                    width="13rem"/>
+
+                                            </VBox>
+
+
+                                            <!-- Data type -->
+                                            <VBox
+                                                class="sapUiSmallMarginEnd">
+
+                                                <Label text="Data Type"/>
+
+                                                <Select
+                                                    selectedKey="{config>dataType}"
+                                                    width="9rem">
+
+                                                    <core:Item
+                                                        key="String"
+                                                        text="String"/>
+
+                                                    <core:Item
+                                                        key="Integer"
+                                                        text="Integer"/>
+
+                                                    <core:Item
+                                                        key="Decimal"
+                                                        text="Decimal"/>
+
+                                                    <core:Item
+                                                        key="Boolean"
+                                                        text="Boolean"/>
+
+                                                    <core:Item
+                                                        key="Date"
+                                                        text="Date"/>
+
+                                                </Select>
+
+                                            </VBox>
+
+
+                                            <!-- Position -->
+                                            <VBox
+                                                class="sapUiSmallMarginEnd">
+
+                                                <Label text="Position"/>
+
+                                                <Input
+                                                    type="Number"
+                                                    value="{config>position}"
+                                                    width="6rem"/>
+
+                                            </VBox>
+
+
+                                            <!-- Delete column -->
+                                            <Button
+                                                icon="sap-icon://decline"
+                                                type="Reject"
+                                                tooltip="Delete column"
+                                                press=".onRemoveColumn"
+                                                class="sapUiSmallMarginTop"/>
+
+
+                                        </HBox>
+
+                                    </content>
+
+                                </Panel>
+
+                            </items>
+
+                        </VBox>
+
+
+                        <!-- Add column -->
+                        <Button
+                            text="Add Column"
+                            icon="sap-icon://add"
+                            type="Transparent"
+                            press=".onAddColumn"
+                            width="100%"/>
+
+
+                    </VBox>
+
+                </ScrollContainer>
+
+
+                <!-- Save and delete configuration -->
+                <HBox
+                    wrap="Wrap"
+                    justifyContent="Start">
+
+                    <Button
+                        text="Save Configuration"
+                        type="Emphasized"
+                        icon="sap-icon://save"
+                        press=".onSaveConfiguration"/>
+
+
+                    <Button
+                        text="Delete Configuration"
+                        type="Reject"
+                        icon="sap-icon://delete"
+                        press=".onDeleteConfiguration"
+                        class="sapUiSmallMarginBegin"/>
+
+                </HBox>
+
+
+            </VBox>
+
+        </content>
+
+    </Page>
+
+</mvc:View>

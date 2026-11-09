@@ -1,0 +1,32 @@
+/* Valid table headers */
+.excelReaderHeader[data-headerstate="valid"] {
+    display: block;
+    width: 100%;
+    background-color: #d9efff;
+}
+
+/* Invalid table headers */
+.excelReaderHeader[data-headerstate="invalid"] {
+    display: block;
+    width: 100%;
+    background-color: #ffd6d6;
+}
+
+/* Base cell styling */
+.excelReaderCell {
+    display: block;
+    width: 100%;
+    min-height: 2.25rem;
+    box-sizing: border-box;
+    padding: 0.4rem 0.5rem;
+}
+
+/* Valid cell */
+.excelReaderCell[data-cellstate="valid"] {
+    background-color: #d9efff;
+}
+
+/* Invalid cell */
+.excelReaderCell[data-cellstate="invalid"] {
+    background-color: #ffd6d6;
+}

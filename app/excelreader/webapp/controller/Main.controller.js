@@ -10,7 +10,8 @@ sap.ui.define([
     "sap/m/Column",
     "sap/m/ColumnListItem",
     "sap/m/Text",
-    "xlsx"
+    "xlsx",
+    "sap/ui/core/CustomData"
 ], function (
     Controller,
     MessageToast,
@@ -23,7 +24,8 @@ sap.ui.define([
     Column,
     ColumnListItem,
     Text,
-    XLSX
+    XLSX,
+    CustomData
 ) {
     "use strict";
 
@@ -41,8 +43,35 @@ sap.ui.define([
 
             this.getView().setModel(
                 oTableModel,
-                "table"
-            );
+                "table");
+
+            // Refresh configurations when returning to main page
+            this.getOwnerComponent()
+                .getRouter()
+                .getRoute("main")
+                .attachPatternMatched(
+                    this._onMainRouteMatched,
+                    this);
+        },
+
+        _onMainRouteMatched: function () {
+
+            const oConfigurationSelect =
+                this.byId("configurationSelect");
+
+            if (!oConfigurationSelect) {
+                return;
+            }
+
+
+            const oBinding =
+                oConfigurationSelect.getBinding("items");
+
+
+            if (oBinding) {
+                oBinding.refresh();
+            }
+
         },
 
         onUploadExcel: function () {
@@ -186,222 +215,347 @@ sap.ui.define([
 
         onLoadData: async function () {
 
-        const oModel = this.getView().getModel();
+            const oModel = this.getView().getModel();
 
-        const oSelect = this.byId("importSelect");
+            const oImportSelect = this.byId("importSelect");
 
-        const oTable = this.byId("importedDataTable");
+            const oConfigurationSelect =
+                this.byId("configurationSelect");
 
-        const sImportID = oSelect.getSelectedKey();
+            const oTable = this.byId("importedDataTable");
 
-        // 1. Check selected import
-        if (!sImportID) {
 
-            MessageToast.show(
-                "Please select an Excel import!"
-            );
+            const sImportID =
+                oImportSelect.getSelectedKey();
 
-            return;
-        }
+            const sConfigurationID =
+                oConfigurationSelect.getSelectedKey();
 
-        try {
 
-            oTable.setBusy(true);
+            // 1. Check selections
+            if (!sImportID) {
 
-            // 2. Call backend action
-            const oOperation = oModel.bindContext(
-                "/loadImportData(...)"
-            );
+                MessageToast.show(
+                    "Please select an Excel import!"
+                );
 
-            oOperation.setParameter(
-                "importID",
-                sImportID
-            );
+                return;
+            }
 
-            await oOperation.execute();
 
-            // 3. Get backend response
-            const oResult = oOperation
-                .getBoundContext()
-                .getObject();
+            if (!sConfigurationID) {
 
-            const sJsonData = typeof oResult === "string"
-                ? oResult
-                : oResult?.value;
+                MessageToast.show(
+                    "Please select a table configuration!"
+                );
 
-            if (typeof sJsonData !== "string") {
+                return;
+            }
+
+
+            try {
+
+                oTable.setBusy(true);
+
+
+                // 2. Call backend action
+                const oOperation = oModel.bindContext(
+                    "/loadImportData(...)"
+                );
+
+
+                oOperation.setParameter(
+                    "importID",
+                    sImportID
+                );
+
+
+                oOperation.setParameter(
+                    "configurationID",
+                    sConfigurationID
+                );
+
+
+                await oOperation.execute();
+
+
+                // 3. Get backend response
+                const oResult = oOperation
+                    .getBoundContext()
+                    .getObject();
+
+
+                const sJsonData = typeof oResult === "string"
+                    ? oResult
+                    : oResult?.value;
+
+
+                if (typeof sJsonData !== "string") {
+                    throw new Error(
+                        "Invalid response received from backend."
+                    );
+                }
+
+
+                // 4. Parse response
+                const oExcelData = JSON.parse(sJsonData);
+
+
+                // 5. Build table
+                this._buildDynamicTable(oExcelData);
+
+
+                MessageToast.show(
+                    "Excel data successfully loaded!"
+                );
+
+
+            } catch (oError) {
+
+                console.error(
+                    "Excel loading error:",
+                    oError
+                );
+
+                MessageBox.error(
+                    oError.message ||
+                    "An error occurred while loading Excel data."
+                );
+
+            } finally {
+
+                oTable.setBusy(false);
+
+            }
+
+        },
+
+    
+   
+        _buildDynamicTable: function (oExcelData) {
+
+            const oTable = this.byId("importedDataTable");
+
+            const oTableModel =
+                this.getView().getModel("table");
+
+            const aHeaders = oExcelData.headers;
+
+            const aRows = oExcelData.rows;
+
+
+            // 1. Validate received structure
+            if (
+                !Array.isArray(aHeaders) ||
+                !Array.isArray(aRows)
+            ) {
                 throw new Error(
-                    "Invalid response received from backend."
+                    "Invalid Excel table structure."
                 );
             }
 
-            // 4. Parse JSON response
-            const oExcelData = JSON.parse(sJsonData);
 
-            // 5. Create dynamic table
-            this._buildDynamicTable(oExcelData);
+            // 2. Remove previous table content
+            oTable.unbindItems();
 
-            MessageToast.show(
-                "Excel data successfully loaded!"
-            );
+            oTable.destroyItems();
 
-        } catch (oError) {
+            oTable.destroyColumns();
 
-            console.error(
-                "Excel loading error:",
-                oError
-            );
 
-            MessageBox.error(
-                oError.message ||
-                "An error occurred while loading Excel data."
-            );
+            // 3. Create dynamic columns with header validation
+            aHeaders.forEach((sHeader, index) => {
 
-        } finally {
+                const bHeaderValid =
+                    Array.isArray(oExcelData.headerValid) &&
+                    oExcelData.headerValid[index] === true;
 
-            oTable.setBusy(false);
+                const oHeaderText = new Text({
+                    text: String(sHeader),
+                    wrapping: false
+                });
 
-        }
+                // Add header validation state
+                oHeaderText.addCustomData(new CustomData({
+                    key: "headerstate",
+                    writeToDom: true,
+                    value: bHeaderValid ? "valid" : "invalid"
+                }));
 
-    },
+                oHeaderText.addStyleClass("excelReaderHeader");
 
-    _buildDynamicTable: function (oExcelData) {
+                const oColumn = new Column({
 
-        const oTable = this.byId("importedDataTable");
+                    header: oHeaderText,
 
-        const oTableModel = this.getView().getModel("table");
+                    width: "12rem"
 
-        const aHeaders = oExcelData.headers;
+                });
 
-        const aRows = oExcelData.rows;
+                oTable.addColumn(oColumn);
 
-        // 1. Validate received data
-        if (
-            !Array.isArray(aHeaders) ||
-            !Array.isArray(aRows)
-        ) {
-            throw new Error(
-                "Invalid Excel table structure."
-            );
-        }
-
-        // 2. Remove previous table content
-        oTable.unbindItems();
-
-        oTable.destroyItems();
-
-        oTable.destroyColumns();
-
-        // 3. Create dynamic columns
-        aHeaders.forEach(sHeader => {
-
-            const oColumn = new Column({
-                header: new Text({
-                    text: String(sHeader)
-                }),
-                width: "12rem"
             });
 
-            oTable.addColumn(oColumn);
 
-        });
+            // 4. Transform rows for frontend display
+            const aDisplayRows = aRows.map(oRow => {
 
-        // 4. Transform rows for frontend display
-        const aDisplayRows = aRows.map(aRow => {
+                if (
+                    !oRow ||
+                    !Array.isArray(oRow.cells)
+                ) {
+                    throw new Error(
+                        "Invalid Excel row structure."
+                    );
+                }
 
-            if (!Array.isArray(aRow)) {
-                throw new Error(
-                    "Invalid Excel row structure."
-                );
+
+                return {
+
+                    cells: aHeaders.map((sHeader, index) => {
+
+                        const oCell = oRow.cells[index] || {};
+
+                        const vValue = oCell.value;
+
+                        const bEmpty =
+                            vValue === null ||
+                            vValue === undefined ||
+                            (
+                                typeof vValue === "string" &&
+                                vValue.trim() === ""
+                            );
+
+                        return {
+
+                            value: this._formatCellValue(vValue),
+
+                            valid: oCell.valid === true,
+
+                            cellState:
+                                oCell.valid === true && !bEmpty
+                                    ? "valid"
+                                    : "invalid"
+
+                        };
+
+                    })
+
+                };
+
+            });
+
+
+            // 5. Update JSONModel
+            oTableModel.setData({
+
+                filename: oExcelData.filename,
+
+                totalRows:
+                    oExcelData.totalRows ?? aDisplayRows.length,
+
+                rows: aDisplayRows
+
+            });
+
+
+            // 6. Create dynamic table cells
+            const aCells = aHeaders.map((sHeader, index) => {
+
+                const oCell = new Text({
+                    wrapping: false
+                });
+
+                // Bind cell value
+                oCell.bindProperty("text", {
+                    path: "table>cells/" + index + "/value"
+                });
+
+                // Create CustomData for CSS styling
+                const oCellState = new CustomData({
+                    key: "cellstate",
+                    writeToDom: true
+                });
+
+                // Bind validation state
+                oCellState.bindProperty("value", {
+                    path: "table>cells/" + index + "/cellState"
+                });
+
+                oCell.addCustomData(oCellState);
+
+                // Add CSS class
+                oCell.addStyleClass("excelReaderCell");
+
+                return oCell;
+
+            });
+
+
+            // 7. Create row template
+            const oRowTemplate = new ColumnListItem({
+
+                cells: aCells
+
+            });
+
+
+            // 8. Bind JSONModel to table
+            oTable.bindItems({
+
+                path: "table>/rows",
+
+                template: oRowTemplate,
+
+                templateShareable: false
+
+            });
+
+        },
+
+
+
+        _formatCellValue: function (vValue) {
+
+            // Handle empty values
+            if (
+                vValue === null ||
+                vValue === undefined
+            ) {
+                return "";
             }
 
-            return {
-                cells: aHeaders.map((sHeader, i) =>
-                    this._formatCellValue(aRow[i])
-                )
-            };
-
-        });
-
-        // 5. Update JSONModel
-        oTableModel.setData({
-
-            filename: oExcelData.filename,
-
-            totalRows: oExcelData.totalRows ?? aDisplayRows.length,
-
-            rows: aDisplayRows
-
-        });
-
-        // 6. Create dynamic table cells
-        const aCells = aHeaders.map((sHeader, i) => {
-
-            const oCell = new Text({
-                wrapping: false
-            });
-
-            oCell.bindProperty("text", {
-                path: "table>cells/" + i
-            });
-
-            return oCell;
-
-        });
-
-        // 7. Create row template
-        const oRowTemplate = new ColumnListItem({
-            cells: aCells
-        });
-
-        // 8. Bind JSONModel data to table
-        oTable.bindItems({
-
-            path: "table>/rows",
-
-            template: oRowTemplate,
-
-            templateShareable: false
-
-        });
-
-    },
-
-    _formatCellValue: function (vValue) {
-
-        // Handle empty values
-        if (
-            vValue === null ||
-            vValue === undefined
-        ) {
-            return "";
-        }
-
-        // Handle Boolean values
-        if (typeof vValue === "boolean") {
-            return vValue ? "true" : "false";
-        }
-
-        // Format ISO date values
-        if (
-            typeof vValue === "string" &&
-            /^\d{4}-\d{2}-\d{2}T/.test(vValue)
-        ) {
-
-            const oDate = new Date(vValue);
-
-            if (!Number.isNaN(oDate.getTime())) {
-                return oDate.toLocaleDateString();
+            // Handle Boolean values
+            if (typeof vValue === "boolean") {
+                return vValue ? "true" : "false";
             }
 
-        }
+            // Format ISO date values
+            if (
+                typeof vValue === "string" &&
+                /^\d{4}-\d{2}-\d{2}T/.test(vValue)
+            ) {
 
-        // Convert all other values to strings
-        return String(vValue);
+                const oDate = new Date(vValue);
 
-    },
+                if (!Number.isNaN(oDate.getTime())) {
+                    return oDate.toLocaleDateString();
+                }
 
+            }
 
+            // Convert all other values to strings
+            return String(vValue);
+
+        },
+
+        onNavigateToConfigurations: function () {
+
+            this.getOwnerComponent()
+                .getRouter()
+                .navTo("configurations");
+
+        },
 
     });
 });

@@ -3,11 +3,18 @@
     xmlns:mvc="sap.ui.core.mvc"
     xmlns="sap.m"
     xmlns:core="sap.ui.core">
-
-    <App>
         <Page
             title="Excel Reader"
             showHeader="true">
+            <headerContent>
+                <Button
+                    id="manageTableConfigButton"
+                    text="Manage Table Configurations"
+                    icon="sap-icon://action-settings"
+                    type="Transparent"
+                    press=".onNavigateToConfigurations"
+                />
+            </headerContent>
 
             <content>
                 <VBox
@@ -28,14 +35,18 @@
                         icon="sap-icon://upload"
                         press=".onUploadExcel"/>
 
-                    <HBox
-                        alignItems="Center"
+                    <VBox
                         wrap="Wrap"
                         class="sapUiSmallMarginTop sapUiSmallMarginBottom">
 
+                        <Label
+                            text="Uploaded Excel files:"
+                            labelFor="importSelect"
+                        />
+                        <!-- Excel import -->
                         <Select
                             id="importSelect"
-                            width="24rem"
+                            width="20rem"
                             forceSelection="false"
                             items="{
                                 path: '/Imports',
@@ -50,14 +61,38 @@
 
                         </Select>
 
+                        <Label
+                            text="Table configurations:"
+                            labelFor="configurationSelect"
+                        />
+                        <!-- Table configuration -->
+                        <Select
+                            id="configurationSelect"
+                            width="20rem"
+                            forceSelection="false"
+                            items="{
+                                path: '/TableConfigurations',
+                                parameters: {
+                                    $orderby: 'name'
+                                }
+                            }">
+
+                            <core:Item
+                                key="{ID}"
+                                text="{name}"/>
+
+                        </Select>
+
+
+                        <!-- Load -->
                         <Button
                             text="Load Data"
                             type="Emphasized"
                             icon="sap-icon://download"
                             press=".onLoadData"
-                            class="sapUiSmallMarginBegin"/>
+                            class="sapUiSmallMarginTop"/>
 
-                    </HBox>
+                    </VBox>
 
                     <Title
                         text="Imported Data"
@@ -65,10 +100,10 @@
                         class="sapUiMediumMarginTop"/>
 
 
-                    <VBox
+                    <HBox
                         width="100%"
-                        class="sapUiMediumMarginTop"
-                        justifyContent="Center">
+                        justifyContent="Center"
+                        class="sapUiMediumMarginTop">
 
                         <Table
                             id="importedDataTable"
@@ -80,7 +115,6 @@
 
                             <headerToolbar>
                                 <Toolbar>
-
                                     <Title
                                         text="{table>/filename}"
                                         level="H4"/>
@@ -89,17 +123,11 @@
 
                                     <Text
                                         text="{= ${table>/totalRows} + ' rows' }"/>
-
                                 </Toolbar>
                             </headerToolbar>
-
                         </Table>
-                    </VBox>
-
+                    </HBox>
                 </VBox>
             </content>
-
         </Page>
-    </App>
-
 </mvc:View>

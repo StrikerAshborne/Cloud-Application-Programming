@@ -1,4 +1,3 @@
-
 const ALLOWED_DATA_TYPES = [
     'String',
     'Integer',
@@ -9,19 +8,23 @@ const ALLOWED_DATA_TYPES = [
 
 
 /**
- * Validates the column configuration.
+ * Validates a table configuration.
  */
 function validateConfiguration(configuration) {
 
     const errors = [];
 
-    if (!Array.isArray(configuration) || configuration.length === 0) {
+    if (
+        !Array.isArray(configuration) ||
+        configuration.length === 0
+    ) {
         return [{
-            message: 'No column configuration was found.'
+            message: 'At least one column configuration is required.'
         }];
     }
 
     const seenHeaders = new Set();
+    const seenPositions = new Set();
 
     configuration.forEach((column, index) => {
 
@@ -37,7 +40,8 @@ function validateConfiguration(configuration) {
             return;
         }
 
-        const normalizedHeader = column.headerName.trim().toLowerCase();
+        const normalizedHeader =
+            column.headerName.trim().toLowerCase();
 
         if (seenHeaders.has(normalizedHeader)) {
             errors.push({
@@ -48,11 +52,37 @@ function validateConfiguration(configuration) {
 
         seenHeaders.add(normalizedHeader);
 
+
         if (!ALLOWED_DATA_TYPES.includes(column.dataType)) {
             errors.push({
                 column: column.headerName,
                 message: `Unsupported data type: ${column.dataType}.`
             });
+        }
+
+
+        const position = Number(column.position);
+
+        if (
+            !Number.isInteger(position) ||
+            position <= 0
+        ) {
+            errors.push({
+                column: column.headerName,
+                message: 'Position must be a positive integer.'
+            });
+
+        } else {
+
+            if (seenPositions.has(position)) {
+                errors.push({
+                    column: column.headerName,
+                    message: 'Duplicate column position.'
+                });
+            }
+
+            seenPositions.add(position);
+
         }
 
     });
@@ -62,87 +92,15 @@ function validateConfiguration(configuration) {
 
 
 /**
- * Validates Excel headers against configuration.
- *
- * Missing configured headers are allowed.
- * Unknown Excel headers are not allowed.
+ * Checks whether a value is empty.
  */
-function validateHeaders(headers, configuration) {
+function isEmptyValue(value) {
 
-    const errors = [];
-
-    if (!Array.isArray(headers) || headers.length === 0) {
-        return [{
-            message: 'No headers were provided.'
-        }];
-    }
-
-    const normalizedHeaders = headers.map(header =>
-        typeof header === 'string'
-            ? header.trim().toLowerCase()
-            : ''
+    return (
+        value === null ||
+        value === undefined ||
+        value === ''
     );
-
-    // Check empty headers
-    headers.forEach((header, index) => {
-
-        if (
-            typeof header !== 'string' ||
-            !header.trim()
-        ) {
-            errors.push({
-                column: index + 1,
-                message: 'Header cannot be empty.'
-            });
-        }
-
-    });
-
-    // Check duplicate Excel headers
-    const seenHeaders = new Set();
-
-    normalizedHeaders.forEach((header, index) => {
-
-        if (!header) {
-            return;
-        }
-
-        if (seenHeaders.has(header)) {
-            errors.push({
-                column: index + 1,
-                header: headers[index],
-                message: 'Duplicate Excel header.'
-            });
-        }
-
-        seenHeaders.add(header);
-
-    });
-
-    // Check unknown Excel headers
-    const configuredHeaders = new Set(
-        configuration.map(column =>
-            column.headerName.trim().toLowerCase()
-        )
-    );
-
-    headers.forEach((header, index) => {
-
-        if (
-            typeof header === 'string' &&
-            header.trim() &&
-            !configuredHeaders.has(header.trim().toLowerCase())
-        ) {
-            errors.push({
-                column: index + 1,
-                header,
-                message: 'Unknown column header.'
-            });
-        }
-
-    });
-
-    return errors;
 }
 
 
@@ -156,11 +114,13 @@ function validateDataType(value, dataType) {
         case 'String':
             return typeof value === 'string';
 
+
         case 'Integer':
             return (
                 typeof value === 'number' &&
                 Number.isInteger(value)
             );
+
 
         case 'Decimal':
             return (
@@ -168,8 +128,10 @@ function validateDataType(value, dataType) {
                 Number.isFinite(value)
             );
 
+
         case 'Boolean':
             return typeof value === 'boolean';
+
 
         case 'Date': {
 
@@ -186,15 +148,18 @@ function validateDataType(value, dataType) {
                 .split('-')
                 .map(Number);
 
-            const date = new Date(Date.UTC(year, month - 1, day));
+            const date = new Date(
+                Date.UTC(year, month - 1, day)
+            );
 
             return (
                 date.getUTCFullYear() === year &&
                 date.getUTCMonth() === month - 1 &&
                 date.getUTCDate() === day &&
-                !isNaN(Date.parse(value))
+                !Number.isNaN(Date.parse(value))
             );
         }
+
 
         default:
             return false;
@@ -203,119 +168,34 @@ function validateDataType(value, dataType) {
 
 
 /**
- * Validates a single Excel row.
- */
-function validateRow(row, rowNumber, configuration, headers) {
-
-    const errors = [];
-
-    if (
-        typeof row !== 'object' ||
-        row === null ||
-        Array.isArray(row)
-    ) {
-        return [{
-            row: rowNumber,
-            message: 'Invalid row format.'
-        }];
-    }
-
-    // Check whether all uploaded headers exist in the row
-    headers.forEach(header => {
-
-        if (!Object.prototype.hasOwnProperty.call(row, header)) {
-
-            errors.push({
-                row: rowNumber,
-                column: header,
-                message: 'Missing column value.'
-            });
-
-        }
-
-    });
-
-    // Validate configured data types
-    configuration.forEach(column => {
-
-        const normalizedColumnName =
-            column.headerName.trim().toLowerCase();
-
-        const matchingKey = Object.keys(row).find(key =>
-            key.trim().toLowerCase() === normalizedColumnName
-        );
-
-        // Missing configured columns are allowed
-        if (matchingKey === undefined) {
-            return;
-        }
-
-        const value = row[matchingKey];
-
-        // Empty values are allowed for now
-        if (
-            value === null ||
-            value === undefined ||
-            value === ''
-        ) {
-            return;
-        }
-
-        if (!validateDataType(value, column.dataType)) {
-
-            errors.push({
-                row: rowNumber,
-                column: column.headerName,
-                value,
-                message: `Invalid data type. Expected ${column.dataType}.`
-            });
-
-        }
-
-    });
-
-    return errors;
-}
-
-
-
-/**
- * Normalizes Excel rows according to configuration.
+ * Normalizes Excel rows without validating their values.
  *
- * Missing configured columns are added with null values.
- * Header names are replaced with their configured names.
+ * Missing headers are filled with null.
  */
-function normalizeRows(rows, configuration) {
+function normalizeRows(rows, headers) {
 
     return rows.map(row => {
 
         const normalizedRow = {};
 
-        configuration.forEach(column => {
+        headers.forEach(header => {
 
-            const normalizedColumnName =
-                column.headerName.trim().toLowerCase();
-
-            const matchingKey = Object.keys(row).find(key =>
-                key.trim().toLowerCase() === normalizedColumnName
-            );
-
-            normalizedRow[column.headerName] =
-                matchingKey !== undefined
-                    ? row[matchingKey]
+            normalizedRow[header] =
+                Object.prototype.hasOwnProperty.call(row, header)
+                    ? row[header]
                     : null;
 
         });
 
         return normalizedRow;
+
     });
 }
 
 
 module.exports = {
     validateConfiguration,
-    validateHeaders,
-    validateRow,
     validateDataType,
+    isEmptyValue,
     normalizeRows
 };

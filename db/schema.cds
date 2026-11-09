@@ -22,8 +22,23 @@ type ExcelColumnType : String enum {
     Date;
 }
 
-entity ExcelColumnConfigurations : cuid, managed {
+entity TableConfigurations : cuid, managed {
+
+    name : String(255) not null;
+
+    columns : Composition of many TableConfigurationColumns
+        on columns.parent = $self;
+
+}
+
+entity TableConfigurationColumns : cuid, managed {
+
+    parent : Association to one TableConfigurations;
+
     headerName : String(255) not null;
-    dataType   : ExcelColumnType not null;
-    position   : Integer not null;
+
+    dataType : ExcelColumnType not null;
+
+    position : Integer not null;
+
 }

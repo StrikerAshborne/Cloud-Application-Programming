@@ -37,6 +37,13 @@
         "sap.ui.unified": {}
       }
     },
+    "resources": {
+      "css": [
+        {
+          "uri": "css/style.css"
+        }
+      ]
+    },
     "contentDensities": {
       "compact": true,
       "cozy": true
@@ -59,10 +66,48 @@
       }
     },
     "rootView": {
-      "viewName": "ns.excelreader.view.Main",
-      "type": "XML",
-      "id": "Main",
-      "async": true
+    "viewName": "ns.excelreader.view.App",
+    "type": "XML",
+    "id": "App",
+    "async": true
+    },
+
+    "routing": {
+        "config": {
+            "routerClass": "sap.m.routing.Router",
+            "type": "View",
+            "viewType": "XML",
+            "path": "ns.excelreader.view",
+            "controlId": "app",
+            "controlAggregation": "pages",
+            "async": true
+        },
+
+        "routes": [
+            {
+                "pattern": "",
+                "name": "main",
+                "target": "main"
+            },
+            {
+                "pattern": "configurations",
+                "name": "configurations",
+                "target": "configurations"
+            }
+        ],
+
+        "targets": {
+            "main": {
+                "type": "View",
+                "name": "Main",
+                "level": 1
+            },
+            "configurations": {
+                "type": "View",
+                "name": "TableConfigurations",
+                "level": 2
+            }
+        }
     }
   }
 }
