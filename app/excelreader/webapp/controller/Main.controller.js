@@ -80,20 +80,26 @@ sap.ui.define([
             const oController = this;
 
             const oFileUploader = new FileUploader({
-                width: "100%",
-                fileType: ["xlsx", "xls"],
-                placeholder: "Choose an Excel file"
-            });
-
-            const oDialog = new Dialog({
-                title: "Upload Excel File",
-                contentWidth: "400px",
-
-                content: new VBox({
                     width: "100%",
-                    class: "sapUiSmallMargin",
+                    fileType: ["xlsx", "xls"],
+                    placeholder: "Choose an Excel file"
+                });
+
+                // Create upload container
+                const oUploadContainer = new VBox({
+                    width: "90%",
                     items: [oFileUploader]
-                }),
+                });
+
+                // Add CSS class
+                oUploadContainer.addStyleClass("sapUiSmallMargin");
+
+                // Create dialog
+                const oDialog = new Dialog({
+                    title: "Upload Excel File",
+                    contentWidth: "400px",
+
+                    content: oUploadContainer,
 
                 beginButton: new Button({
                     text: "Upload",
@@ -426,9 +432,15 @@ sap.ui.define([
                                 vValue.trim() === ""
                             );
 
+                        const vDisplayValue =
+                            oCell.displayValue !== null &&
+                            oCell.displayValue !== undefined
+                                ? String(oCell.displayValue)
+                                : this._formatCellValue(vValue);
+
                         return {
 
-                            value: this._formatCellValue(vValue),
+                            value: vDisplayValue,
 
                             valid: oCell.valid === true,
 

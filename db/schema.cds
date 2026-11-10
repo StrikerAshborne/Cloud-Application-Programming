@@ -41,4 +41,7 @@ entity TableConfigurationColumns : cuid, managed {
 
     position : Integer not null;
 
+    regexPattern : String(1000);
+
+    regexReplacement : String(1000);
 }

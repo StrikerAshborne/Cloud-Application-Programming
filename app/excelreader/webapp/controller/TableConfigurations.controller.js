@@ -151,7 +151,9 @@ sap.ui.define([
                         {
                             headerName: "",
                             dataType: "String",
-                            position: 1
+                            position: 1,
+                            regexPattern: "",
+                            regexReplacement: "$&"
                         }
 
                     ]
@@ -176,7 +178,11 @@ sap.ui.define([
 
                     dataType: "String",
 
-                    position: oData.columns.length + 1
+                    position: oData.columns.length + 1,
+
+                    regexPattern: "",
+
+                    regexReplacement: "$&"
 
                 };
 
@@ -281,11 +287,14 @@ sap.ui.define([
 
                             dataType: column.dataType,
 
-                            position: Number(column.position)
+                            position: Number(column.position),
+
+                            regexPattern: column.regexPattern ?? "",
+
+                            regexReplacement: column.regexReplacement ?? "$&"
 
                         })
                     );
-
 
                     // 3. Call backend
                     const oOperation = oModel.bindContext(

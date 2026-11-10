@@ -60,6 +60,28 @@ function validateConfiguration(configuration) {
             });
         }
 
+        if (
+            column.regexPattern !== undefined &&
+            column.regexPattern !== null &&
+            typeof column.regexPattern !== 'string'
+        ) {
+            errors.push({
+                column: column.headerName,
+                message: 'Regex pattern must be a string.'
+            });
+        }
+
+        if (
+            column.regexReplacement !== undefined &&
+            column.regexReplacement !== null &&
+            typeof column.regexReplacement !== 'string'
+        ) {
+            errors.push({
+                column: column.headerName,
+                message: 'Regex replacement must be a string.'
+            });
+        }
+
 
         const position = Number(column.position);
 
@@ -166,6 +188,72 @@ function validateDataType(value, dataType) {
     }
 }
 
+/**
+ * Applies regex formatting to a cell value.
+ *
+ * If the pattern is missing or invalid,
+ * the original value is returned.
+ */
+function applyRegexFormatting(
+    value,
+    regexPattern,
+    regexReplacement
+) {
+
+    // Empty values should remain unchanged
+    if (value === null || value === undefined) {
+        return {
+            value,
+            changed: false
+        };
+    }
+
+    // No regex provided
+    if (
+        typeof regexPattern !== 'string' ||
+        regexPattern.length === 0
+    ) {
+        return {
+            value,
+            changed: false
+        };
+    }
+
+    try {
+
+        // Apply globally to every match
+        const regex = new RegExp(regexPattern, 'g');
+
+        // Convert the original value to a string
+        const originalText = String(value);
+
+        // Default replacement: preserve the matched text
+        const replacement =
+            typeof regexReplacement === 'string'
+                ? regexReplacement
+                : '$&';
+
+        // Format the value
+        const formattedText = originalText.replace(
+            regex,
+            replacement
+        );
+
+        return {
+            value: formattedText,
+            changed: formattedText !== originalText
+        };
+
+    } catch (error) {
+
+        // Invalid regex: keep the original value
+        return {
+            value,
+            changed: false
+        };
+
+    }
+}
 
 /**
  * Normalizes Excel rows without validating their values.
@@ -197,5 +285,6 @@ module.exports = {
     validateConfiguration,
     validateDataType,
     isEmptyValue,
-    normalizeRows
+    normalizeRows,
+    applyRegexFormatting
 };

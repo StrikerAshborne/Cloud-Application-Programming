@@ -6,7 +6,8 @@ const {
     validateConfiguration,
     validateDataType,
     isEmptyValue,
-    normalizeRows
+    normalizeRows,
+    applyRegexFormatting
 } = require('./validation');
 
 class AdminService extends cds.ApplicationService {
@@ -265,7 +266,7 @@ class AdminService extends cds.ApplicationService {
             });
 
 
-            // 9. Transform and validate every cell
+            // 9. Transform, validate and format every cell
             const aTableRows = aRows.map(oRow => {
 
                 const aCells = aTableHeaders.map(sHeader => {
@@ -273,29 +274,26 @@ class AdminService extends cds.ApplicationService {
                     const normalizedHeader =
                         normalizeHeader(sHeader);
 
-
                     // Find matching uploaded header
                     const originalHeader =
                         uploadedHeaderMap.get(normalizedHeader);
-
 
                     // Find matching configuration
                     const oColumnConfiguration =
                         configurationMap.get(normalizedHeader);
 
-
-                    // Get cell value
+                    // Get original cell value
                     const value = originalHeader !== undefined
                         ? oRow[originalHeader] ?? null
                         : null;
 
-
-                    // Validate cell
+                    // Validate original cell value
                     let valid = false;
 
                     if (oColumnConfiguration) {
 
-                        valid = isEmptyValue(value) ||
+                        valid =
+                            isEmptyValue(value) ||
                             validateDataType(
                                 value,
                                 oColumnConfiguration.dataType
@@ -303,14 +301,34 @@ class AdminService extends cds.ApplicationService {
 
                     }
 
+                    // Apply regex formatting
+                    const formatting = oColumnConfiguration
+                        ? applyRegexFormatting(
+                            value,
+                            oColumnConfiguration.regexPattern,
+                            oColumnConfiguration.regexReplacement
+                        )
+                        : {
+                            value,
+                            changed: false
+                        };
 
                     return {
+
+                        // Original value remains unchanged
                         value,
+
+                        // Only the display value is formatted
+                        displayValue: formatting.changed
+                            ? formatting.value
+                            : null,
+
+                        // Validation is based on the original value
                         valid
+
                     };
 
                 });
-
 
                 return {
                     cells: aCells
@@ -370,7 +388,9 @@ class AdminService extends cds.ApplicationService {
                     ID: column.ID,
                     headerName: column.headerName,
                     dataType: column.dataType,
-                    position: column.position
+                    position: column.position,
+                    regexPattern: column.regexPattern,
+                    regexReplacement: column.regexReplacement
                 }))
             });
 
@@ -460,7 +480,11 @@ class AdminService extends cds.ApplicationService {
 
                 dataType: column.dataType,
 
-                position: Number(column.position)
+                position: Number(column.position),
+
+                regexPattern: column.regexPattern ?? '',
+
+                regexReplacement: column.regexReplacement ?? '$&'
 
             }));
 

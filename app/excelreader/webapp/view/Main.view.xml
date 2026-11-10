@@ -110,7 +110,7 @@
                             growing="true"
                             growingScrollToLoad="true"
                             inset="false"
-                            width="80%"
+                            width="90%"
                             noDataText="Select an Excel import and press Load Data.">
 
                             <headerToolbar>

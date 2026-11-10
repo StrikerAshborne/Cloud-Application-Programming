@@ -84,7 +84,7 @@
                 
                 <!-- Scrollable column configuration area -->
                 <ScrollContainer
-                    width="100%"
+                    width="90%"
                     height="22rem"
                     vertical="true"
                     horizontal="false"
@@ -175,6 +175,33 @@
                                                     type="Number"
                                                     value="{config>position}"
                                                     width="6rem"/>
+
+                                            </VBox>
+
+                                            <!-- Regex Pattern -->
+                                            <VBox
+                                                class="sapUiSmallMarginEnd">
+
+                                                <Label text="Regex Pattern"/>
+
+                                                <Input
+                                                    value="{config>regexPattern}"
+                                                    placeholder="Enter regex pattern"
+                                                    width="16rem"/>
+
+                                            </VBox>
+
+
+                                            <!-- Regex Replacement -->
+                                            <VBox
+                                                class="sapUiSmallMarginEnd">
+
+                                                <Label text="Regex Replacement"/>
+
+                                                <Input
+                                                    value="{config>regexReplacement}"
+                                                    placeholder="e.g. $3.$2.$1"
+                                                    width="12rem"/>
 
                                             </VBox>
 
